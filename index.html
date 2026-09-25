@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>療育マップ 千代田区</title>
-<meta name="description" content="千代田区の児童発達支援・放課後等デイサービスを地図で探せるマップ。タップで支援内容の概要、さらにタップで各施設の公式サイトへ。">
+<title>療育マップ 千代田・台東・中央</title>
+<meta name="description" content="千代田区・台東区・中央区の児童発達支援・放課後等デイサービスを地図で探せるマップ。タップで支援内容の概要、さらにタップで各施設の公式サイトへ。">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#fbf8f3; --surface:#ffffff; --ink:#2b2a28; --muted:#6f6a62; --line:#e7e1d7;
-  --jihatsu:#e8833a; --houday:#2f7fc1; --both:#8a5cc2; --houmon:#3a9a6a;
+  --jihatsu:#e8833a; --houday:#2f7fc1; --both:#8a5cc2; --houmon:#3a9a6a; --hoiku:#c2527a;
   --accent:#2b2a28; --shadow:0 10px 30px rgba(40,30,10,.18);
   --radius:18px;
 }
@@ -35,8 +35,13 @@ h1 small{font-size:13px;color:var(--muted);margin-left:6px;font-weight:500}
 .chip{flex:0 0 auto;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit}
 .chip .dot{width:10px;height:10px;border-radius:50%}
 .chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.chips.wards{margin-top:6px}
+.chips.wards .chip{padding:4px 11px;font-size:12px}
+.note{font-size:13px;line-height:1.6;background:color-mix(in srgb,var(--jihatsu) 14%,var(--surface));border-left:3px solid var(--jihatsu);border-radius:8px;padding:8px 10px;margin:4px 0 10px}
+.ward-tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
 main{position:relative;flex:1;min-height:0}
-#map{position:absolute;inset:0;background:#e9e6df}
+#map{position:absolute;inset:0;background:#e9e6df;overflow:hidden}
+main.sheet-open .list-btn{display:none}
 .list-btn{position:absolute;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:970;background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:12px 18px;font-size:14px;font-weight:700;box-shadow:var(--shadow);cursor:pointer;font-family:inherit}
 
 /* markers */
@@ -83,6 +88,7 @@ main{position:relative;flex:1;min-height:0}
       <span class="count" id="count"></span>
     </div>
     <div class="chips" id="chips" role="group" aria-label="サービスで絞り込み"></div>
+    <div class="chips wards" id="wards" role="group" aria-label="区で絞り込み"></div>
   </header>
   <main>
     <div id="map" aria-label="施設の地図"></div>
@@ -103,14 +109,16 @@ main{position:relative;flex:1;min-height:0}
   const SERVICES = {
     jihatsu:{label:"児童発達支援", short:"児", color:"var(--jihatsu)", hint:"主に未就学児"},
     houday:{label:"放課後等デイ", short:"放", color:"var(--houday)", hint:"小〜高校生"},
-    houmon:{label:"訪問型", short:"訪", color:"var(--houmon)", hint:"自宅へ訪問"}
+    houmon:{label:"居宅訪問型", short:"訪", color:"var(--houmon)", hint:"自宅へ訪問"},
+    hoikuhoumon:{label:"保育所等訪問", short:"保", color:"var(--hoiku)", hint:"園・学校へ訪問"}
   };
   const data = (window.FACILITIES||[]).map((f,i)=>({...f,id:i}));
   const meta = window.FACILITIES_META||{};
   const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const safeUrl = u => /^https?:\/\//i.test(u||"") ? u : "#";
 
-  document.getElementById("area").textContent = meta.area||"";
+  const AREAS = meta.areas||[];
+  document.getElementById("area").textContent = AREAS.map(a=>a.replace(/区$/,"")).join("・");
 
   // 同じ座標の施設を少しずらす
   const seen = {};
@@ -120,8 +128,8 @@ main{position:relative;flex:1;min-height:0}
     if(n>1){f.lat+= (n-1)*0.00018; f.lng+=(n-1)*0.00022;}
   });
 
-  const colorOf = f => f.services.length>1 ? "var(--both)" : SERVICES[f.services[0]].color;
-  const labelOf = f => f.services.map(s=>SERVICES[s].short).join("");
+  const colorOf = f => { const m=f.services.filter(s=>s!=="hoikuhoumon"); const k=m.length?m:f.services; return k.length>1 ? "var(--both)" : SERVICES[k[0]].color; };
+  const labelOf = f => { const m=f.services.filter(s=>s!=="hoikuhoumon"); return (m.length?m:f.services).slice(0,2).map(s=>SERVICES[s].short).join(""); };
 
   const map = L.map("map",{zoomControl:false,tap:true}).setView([35.689,139.758],14);
   L.control.zoom({position:"topright"}).addTo(map);
@@ -152,7 +160,21 @@ main{position:relative;flex:1;min-height:0}
     chips.querySelectorAll("button.chip").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));
     applyFilter();
   });
-  const visible = f => mode==="all" || f.services.includes(mode);
+  let ward = "all";
+  const wardsEl = document.getElementById("wards");
+  wardsEl.innerHTML = `<button class="chip" data-w="all" aria-pressed="true">全エリア</button>` +
+    AREAS.map(a=>`<button class="chip" data-w="${esc(a)}" aria-pressed="false">${esc(a)}</button>`).join("");
+  wardsEl.addEventListener("click",e=>{
+    const b=e.target.closest("button.chip"); if(!b) return;
+    ward=b.dataset.w;
+    wardsEl.querySelectorAll("button.chip").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));
+    applyFilter(); fitVisible();
+  });
+  function fitVisible(){
+    const pts=data.filter(visible).map(f=>[f.lat,f.lng]);
+    if(pts.length) map.fitBounds(L.latLngBounds(pts),{padding:[30,30],maxZoom:16});
+  }
+  const visible = f => (mode==="all" || f.services.includes(mode)) && (ward==="all" || f.ward===ward);
   function applyFilter(){
     let n=0;
     data.forEach(f=>{ const v=visible(f); if(v){n++; markers[f.id].addTo(map);} else markers[f.id].remove(); });
@@ -172,7 +194,8 @@ main{position:relative;flex:1;min-height:0}
     body.innerHTML = `
       <div class="badges">${badges(f)}</div>
       <h2 class="card-name">${esc(f.name)}</h2>
-      ${f.age?`<p class="meta">対象：${esc(f.age)}</p>`:""}
+      <p class="meta"><span class="ward-tag">${esc(f.ward||"")}</span>${f.age?`　対象：${esc(f.age)}`:""}</p>
+      ${f.note?`<p class="note">⚠ ${esc(f.note)}</p>`:""}
       <p class="summary">${esc(f.summary)}</p>
       <div class="tags">${(f.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
       <div class="info">📍 ${esc(f.address)}<br>📞 <a href="tel:${esc(f.tel.replace(/-/g,""))}">${esc(f.tel)}</a></div>
@@ -180,7 +203,7 @@ main{position:relative;flex:1;min-height:0}
         <a class="btn btn-primary" href="${esc(safeUrl(f.url))}" target="_blank" rel="noopener">公式サイトを見る ↗</a>
         <a class="btn btn-sub" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">経路</a>
       </div>`;
-    sheet.classList.add("open");
+    sheet.classList.add("open"); sheet.parentElement.classList.add("sheet-open");
     body.scrollTop=0;
     map.panTo([f.lat,f.lng],{animate:true});
     setTimeout(()=>{ // シートに隠れないよう少し上へ
@@ -188,7 +211,7 @@ main{position:relative;flex:1;min-height:0}
     },30);
   }
   function closeSheet(){
-    sheet.classList.remove("open");
+    sheet.classList.remove("open"); sheet.parentElement.classList.remove("sheet-open");
     if(active) markers[active.id].getElement()?.firstElementChild?.classList.remove("active");
     active=null;
   }
@@ -202,9 +225,10 @@ main{position:relative;flex:1;min-height:0}
       <button class="item" data-id="${f.id}">
         <div class="badges">${badges(f)}</div>
         <div class="card-name">${esc(f.name)}</div>
+        <p>${esc(f.ward||"")}${f.age?"・"+esc(f.age):""}</p>
         <p>${esc(f.summary)}</p>
       </button>`).join("") +
-      `<p class="source">掲載情報は <a href="${esc(meta.sourceUrl)}" target="_blank" rel="noopener">${esc(meta.sourceName)}</a> と各施設の公式サイトをもとに作成しています（最終確認 ${esc(meta.updated)}）。空き状況・対象年齢・内容は変わることがあります。利用前に必ず各施設へ直接ご確認ください。</p>`;
+      `<p class="source">掲載情報は各区の公式一覧（${(meta.sources||[]).map(s=>`<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.name)}</a>`).join("、")}）と各施設の公式サイトをもとに作成しています（最終確認 ${esc(meta.updated)}）。閉室・移転・空き状況・対象年齢・内容は変わることがあります。利用前に必ず各施設へ直接ご確認ください。</p>`;
   }
   list.addEventListener("click",e=>{
     const b=e.target.closest(".item"); if(!b) return;
