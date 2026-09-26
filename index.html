@@ -153,7 +153,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="facilities.js?v=20260926-3"></script>
+<script src="facilities.js?v=20260926-4"></script>
 <script>
 (function(){
   const SERVICES = {
@@ -258,8 +258,9 @@ main.split .list-btn{bottom:calc(42% + 10px)}
     sortBy="dist";
     setSplit(true);
     applyFilter();
-    const pts=data.filter(visible).map(f=>[f.lat,f.lng]).concat([[school.lat,school.lng]]);
-    map.fitBounds(L.latLngBounds(pts),{padding:[30,30],maxZoom:16});
+    // 徒歩15分の円（半径1km）がちょうど収まり、学校が中心に来るように縮尺を合わせる
+    const dLat=WALK_M/111320, dLng=WALK_M/(111320*Math.cos(school.lat*Math.PI/180));
+    map.fitBounds(L.latLngBounds([[school.lat-dLat,school.lng-dLng],[school.lat+dLat,school.lng+dLng]]),{padding:[12,12],animate:false});
   };
   const visitOnly = f => f.services.every(x=>x==="houmon"||x==="hoikuhoumon");
   const preschoolOnly = f => f.services.length===1 && f.services[0]==="jihatsu";
