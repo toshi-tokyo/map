@@ -51,6 +51,30 @@ main{position:relative;flex:1;min-height:0}
 #map{position:absolute;inset:0;background:#e9e6df;overflow:hidden}
 .list-btn{position:absolute;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:970;background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:10px 16px;font-size:13px;font-weight:700;box-shadow:var(--shadow);cursor:pointer;font-family:inherit}
 main.pop-open .list-btn{display:none}
+/* 学校選択時：地図の下に周辺施設リスト */
+.near{position:absolute;left:0;right:0;bottom:0;height:42%;z-index:940;background:var(--bg);border-top:1px solid var(--line);display:none;flex-direction:column;box-shadow:0 -4px 14px rgba(0,0,0,.08)}
+main.split #map{bottom:42%}
+main.split .near{display:flex}
+main.split .pop{bottom:calc(42% + 8px);max-height:34%}
+main.split .list-btn{bottom:calc(42% + 10px)}
+.near-head{display:flex;align-items:center;gap:8px;padding:7px 8px 6px 14px;font-size:12px;border-bottom:1px solid var(--line)}
+.near-head span{flex:1;min-width:0}
+.near-head b{font-weight:700}
+.near-close{border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;font:inherit;font-size:11px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+.near-list{overflow-y:auto;flex:1;padding:4px 10px calc(10px + env(safe-area-inset-bottom))}
+.near-sec{font-size:10.5px;color:var(--muted);margin:8px 2px 2px;font-weight:700}
+.nrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:6px 9px;margin:4px 0;font-family:inherit;color:inherit;cursor:pointer}
+.nrow .sw{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+.nrow .sw.sq{border-radius:2px}
+.nrow .nm{font-size:12.5px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nrow .dd{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.ndetail{background:var(--surface);border:1.5px solid var(--ink);border-top:0;border-radius:0 0 10px 10px;margin:-6px 0 6px;padding:8px 10px;font-size:11px;line-height:1.5}
+.ndetail .meta{color:var(--muted);margin:2px 0 3px;font-size:10.5px}
+.ndetail .note{font-size:10.5px;background:color-mix(in srgb,var(--jihatsu) 14%,var(--surface));border-left:3px solid var(--jihatsu);border-radius:6px;padding:4px 7px;margin:4px 0}
+.ndetail .summary{margin:3px 0 5px}
+.ndetail .info{font-size:10.5px;color:var(--muted);margin:0 0 6px}
+.ndetail .info a{color:inherit}
+.nrow.on{border-radius:10px 10px 0 0;border-color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,var(--surface))}
 .stale{position:absolute;left:12px;right:12px;top:12px;z-index:980;background:#fff4d6;color:#5a4300;border:1px solid #e8c766;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.6;box-shadow:var(--shadow)}
 
 /* markers */
@@ -117,6 +141,10 @@ main.pop-open .list-btn{display:none}
     <div id="map" aria-label="施設の地図"></div>
     <button class="list-btn" id="listBtn">一覧で見る</button>
     <section class="list" id="list" aria-label="施設一覧"></section>
+    <section class="near" id="near" aria-label="学校周辺の施設">
+      <div class="near-head"><span id="nearTitle"></span><button class="near-close" id="nearClose">選択解除 ×</button></div>
+      <div class="near-list" id="nearList"></div>
+    </section>
     <section class="pop" id="pop" aria-live="polite">
       <button class="pop-close" id="popClose" aria-label="閉じる">×</button>
       <div id="popBody"></div>
@@ -125,7 +153,7 @@ main.pop-open .list-btn{display:none}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="facilities.js?v=20260926-2"></script>
+<script src="facilities.js?v=20260926-3"></script>
 <script>
 (function(){
   const SERVICES = {
@@ -220,15 +248,16 @@ main.pop-open .list-btn{display:none}
   });
   schoolSel.onchange=()=>{
     const v=schoolSel.value;
+    closePop();
     schoolMarkers.forEach((m,i)=>{ const el=m.getElement&&m.getElement(); if(el&&el.firstElementChild) el.firstElementChild.classList.toggle("sel", String(i)===v); });
     if(schoolCircle){ schoolCircle.remove(); schoolCircle=null; }
-    if(v===""){ school=null; schoolSel.classList.remove("on"); schoolNote.hidden=true; data.forEach(f=>f.dist=null); if(sortBy==="dist") sortBy="ward"; applyFilter(); fitVisible(); return; }
+    if(v===""){ school=null; schoolSel.classList.remove("on"); schoolNote.hidden=true; data.forEach(f=>f.dist=null); if(sortBy==="dist") sortBy="ward"; setSplit(false); applyFilter(); fitVisible(); return; }
     school=SCHOOLS[+v]; schoolSel.classList.add("on");
     data.forEach(f=>f.dist=distM(school,f));
     schoolCircle=L.circle([school.lat,school.lng],{radius:WALK_M,color:"#2b2a28",weight:1.5,dashArray:"5 5",fillOpacity:.05}).addTo(map);
     sortBy="dist";
+    setSplit(true);
     applyFilter();
-    schoolNote.hidden=false;
     const pts=data.filter(visible).map(f=>[f.lat,f.lng]).concat([[school.lat,school.lng]]);
     map.fitBounds(L.latLngBounds(pts),{padding:[30,30],maxZoom:16});
   };
@@ -243,9 +272,33 @@ main.pop-open .list-btn{display:none}
     data.forEach(f=>{ if(visible(f)){n++; markers[f.id].addTo(map);} else markers[f.id].remove(); });
     document.getElementById("count").textContent = `${n}件`;
     if(school) schoolNote.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分以内（点線の円）か送迎あり、または訪問型：<b>${n}件</b>（未就学児向けのみの施設は除外）`;
-    renderList();
+    renderList(); renderNear();
     if(active && !visible(active)) closePop();
   }
+  const nearEl=document.getElementById("near"), nearList=document.getElementById("nearList"), nearTitle=document.getElementById("nearTitle");
+  function setSplit(on){
+    document.getElementById("main").classList.toggle("split",on);
+    if(map.invalidateSize) map.invalidateSize({pan:false});
+  }
+  function renderNear(){
+    if(!school){ nearList.innerHTML=""; return; }
+    const vis=data.filter(visible);
+    const walk=vis.filter(f=>!visitOnly(f)&&f.dist<=WALK_M).sort((a,b)=>a.dist-b.dist);
+    const pick=vis.filter(f=>!visitOnly(f)&&f.dist>WALK_M).sort((a,b)=>a.dist-b.dist);
+    const visit=vis.filter(visitOnly);
+    nearTitle.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分・送迎あり・訪問型：<b>${vis.length}件</b>`;
+    const row=f=>`<button class="nrow${active&&active.id===f.id?" on":""}" data-id="${f.id}"><span class="sw${isClinic(f)?" sq":""}" style="background:${colorOf(f)}"></span><span class="nm">${esc(f.name)}</span><span class="dd">${visitOnly(f)?"訪問型":f.dist<=WALK_M?"徒歩約"+walkMin(f.dist)+"分":"送迎あり・"+(f.dist/1000).toFixed(1)+"km"}</span></button>`;
+    const sec=(t,a)=>a.length?`<p class="near-sec">${t}（${a.length}）</p>`+a.map(row).join(""):"";
+    nearList.innerHTML = vis.length ? sec("徒歩15分以内",walk)+sec("送迎あり（徒歩15分より遠い）",pick)+sec("学校・自宅へ訪問",visit)
+      : `<p class="near-sec">条件に合う施設がありません。種類・得意分野の絞り込みを「すべて」に戻してみてください。</p>`;
+  }
+  nearList.addEventListener("click",e=>{
+    const b=e.target.closest(".nrow"); if(!b) return;
+    const f=data[+b.dataset.id];
+    if(active && active.id===f.id){ closePop(); return; }
+    openPop(f);   // 縮尺はそのまま、ピンの位置だけ合わせる
+  });
+  document.getElementById("nearClose").onclick=()=>{ schoolSel.value=""; schoolSel.onchange(); };
   function fitVisible(){
     const pts=data.filter(visible).map(f=>[f.lat,f.lng]);
     if(pts.length) map.fitBounds(L.latLngBounds(pts),{padding:[30,30],maxZoom:16});
@@ -255,25 +308,43 @@ main.pop-open .list-btn{display:none}
   const pop=document.getElementById("pop"), body=document.getElementById("popBody"), mainEl=document.getElementById("main");
   const badges = f => f.services.map(s=>`<span class="badge" style="background:${SERVICES[s].color}">${SERVICES[s].label}</span>`).join("");
   const catTags = f => f.cats.map(c=>`<span class="cat${c===cat?" hit":""}">${esc(CATS[c]||c)}</span>`).join("");
-  function openPop(f){
-    if(active) markers[active.id].getElement()?.firstElementChild?.classList.remove("active");
-    active=f;
-    markers[f.id].getElement()?.firstElementChild?.classList.add("active");
+  function detailHTML(f, inline){
     const q=encodeURIComponent(f.name+" "+f.address.replace(/（.*?）/g,""));
     const tel=(f.tel||"").replace(/[^0-9]/g,"");
-    body.innerHTML = `
-      <div class="badges">${badges(f)}</div>
+    return `
+      ${inline?"":`<div class="badges">${badges(f)}</div>
       <h2 class="name">${esc(f.name)}</h2>
-      ${school?`<span class="dist">${distLabel(f)}</span>`:""}
+      ${school?`<span class="dist">${distLabel(f)}</span>`:""}`}
+      ${inline?`<div class="badges">${badges(f)}</div>`:""}
       <p class="meta">${esc(f.ward||"")}${f.age?"・対象："+esc(f.age):""}</p>
       ${f.note?`<p class="note">⚠ ${esc(f.note)}</p>`:""}
-      <p class="summary" title="タップで全文">${esc(f.summary)}</p>
+      <p class="summary${inline?" full":""}" title="タップで全文">${esc(f.summary)}</p>
       ${f.cats.length?`<div class="cats">${catTags(f)}</div>`:""}
       <p class="info">📍 ${esc(f.address)}${f.tel?`<br>📞 <a href="tel:${tel}">${esc(f.tel)}</a>`:""}</p>
       <div class="actions">
         <a class="btn btn-primary" href="${esc(safeUrl(f.url))}" target="_blank" rel="noopener">公式サイト ↗</a>
         <a class="btn btn-sub" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">経路</a>
       </div>`;
+  }
+  // 学校選択中（地図＋下のリスト表示）は、ポップアップの代わりにリスト内で詳細を開く
+  function openInline(f){
+    nearList.querySelectorAll(".ndetail").forEach(d=>d.remove());
+    const row=nearList.querySelector(`.nrow[data-id="${f.id}"]`);
+    if(row){
+      const d=document.createElement("div"); d.className="ndetail pop-like"; d.innerHTML=detailHTML(f,true);
+      row.after(d);
+      row.scrollIntoView({block:"nearest",behavior:"smooth"});
+      d.querySelector(".summary").onclick=e=>e.currentTarget.classList.toggle("full");
+    }
+    map.panTo([f.lat,f.lng],{animate:true});   // 縮尺は変えずに中心だけ移動
+  }
+  function openPop(f){
+    if(active) markers[active.id].getElement()?.firstElementChild?.classList.remove("active");
+    active=f;
+    markers[f.id].getElement()?.firstElementChild?.classList.add("active");
+    nearList.querySelectorAll(".nrow").forEach(r=>r.classList.toggle("on", +r.dataset.id===f.id));
+    if(mainEl.classList.contains("split")){ openInline(f); return; }
+    body.innerHTML = detailHTML(f);
     body.querySelector(".summary").onclick=e=>e.currentTarget.classList.toggle("full");
     pop.classList.add("open"); mainEl.classList.add("pop-open");
     pop.scrollTop=0;
@@ -286,6 +357,8 @@ main.pop-open .list-btn{display:none}
   function closePop(){
     pop.classList.remove("open"); mainEl.classList.remove("pop-open");
     if(active) markers[active.id].getElement()?.firstElementChild?.classList.remove("active");
+    nearList.querySelectorAll(".nrow.on").forEach(r=>r.classList.remove("on"));
+    nearList.querySelectorAll(".ndetail").forEach(d=>d.remove());
     active=null;
   }
   document.getElementById("popClose").onclick=closePop;
@@ -327,7 +400,7 @@ main.pop-open .list-btn{display:none}
     const b=e.target.closest(".item"); if(!b) return;
     toggleList(false);
     const f=data[+b.dataset.id];
-    map.setView([f.lat,f.lng],16,{animate:false});
+    map.setView([f.lat,f.lng],map.getZoom(),{animate:false});   // 縮尺は変えない
     openPop(f);
   });
   function toggleList(show){
