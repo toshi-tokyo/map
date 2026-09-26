@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>療育マップ 千代田・台東・中央</title>
-<meta name="description" content="千代田区・台東区・中央区の児童発達支援・放課後等デイサービスと、子どもの発達障害を診る医療機関を地図で探せるマップ。">
+<title>療育・習い事マップ 千代田・台東・中央</title>
+<meta name="description" content="千代田区・台東区・中央区の児童発達支援・放課後等デイサービス、子どもの発達障害を診る医療機関、発達特性に配慮した習い事を地図で探せるマップ。">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#fbf8f3; --surface:#ffffff; --ink:#2b2a28; --muted:#6f6a62; --line:#e7e1d7;
-  --jihatsu:#e8833a; --houday:#2f7fc1; --both:#8a5cc2; --houmon:#3a9a6a; --hoiku:#c2527a; --clinic:#d64545;
+  --jihatsu:#e8833a; --houday:#2f7fc1; --both:#8a5cc2; --houmon:#3a9a6a; --hoiku:#c2527a; --clinic:#d64545; --lesson:#14937f;
   --shadow:0 8px 24px rgba(40,30,10,.22);
 }
 @media (prefers-color-scheme: dark){
@@ -26,7 +26,7 @@ body{background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,
 .app{display:flex;flex-direction:column;height:100dvh}
 header{padding:10px 16px 8px;background:var(--bg);border-bottom:1px solid var(--line);z-index:1000}
 .title-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-h1{font-family:"Zen Maru Gothic",sans-serif;font-size:19px;margin:0;letter-spacing:.02em}
+h1{font-family:"Zen Maru Gothic",sans-serif;font-size:19px;margin:0;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 h1 small{font-size:12px;color:var(--muted);margin-left:6px;font-weight:500}
 .count{font-size:12px;color:var(--muted);white-space:nowrap}
 .chips{display:flex;gap:6px;margin-top:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
@@ -40,6 +40,18 @@ h1 small{font-size:12px;color:var(--muted);margin-left:6px;font-weight:500}
 .selects select{flex:1;min-width:0;font:inherit;font-size:12.5px;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:5px 6px}
 .selects select.on{border-color:var(--ink)}
 .selects.school{margin-top:5px}
+.seg{display:flex;margin-top:8px;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:700;padding:6px 4px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.seg button+button{border-left:1.5px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg .dot{width:9px;height:9px;border-radius:50%}
+.chips-label{font-size:10.5px;color:var(--muted);flex:0 0 auto;align-self:center;font-weight:700}
+.fbox{flex:1;min-width:0;border-radius:10px;padding:3px 4px 3px 7px;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700}
+.fbox select{flex:1;min-width:0;font:inherit;font-weight:500;font-size:12.5px;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:8px;padding:4px 5px}
+.fbox select.on{border-color:var(--ink)}
+.fbox.ryo{background:color-mix(in srgb,var(--jihatsu) 16%,var(--bg));color:color-mix(in srgb,var(--jihatsu) 70%,var(--ink))}
+.fbox.les{background:color-mix(in srgb,var(--lesson) 16%,var(--bg));color:color-mix(in srgb,var(--lesson) 70%,var(--ink))}
+[hidden]{display:none!important}
 .selects.school label{flex:1}
 .school-note{font-size:10.5px;color:var(--muted);margin:4px 0 0;line-height:1.45}
 .school-note b{color:var(--ink)}
@@ -87,6 +99,8 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 .pin span{transform:rotate(45deg);color:#fff;font-size:11px;font-weight:700;font-family:"Zen Maru Gothic",sans-serif;letter-spacing:-.5px}
 .pin.clinic{border-radius:7px;transform:none;width:26px;height:26px}
 .pin.clinic span{transform:none;font-size:12px}
+.pin.lesson{border-radius:50%;transform:none;width:26px;height:26px;border:3px double #fff}
+.pin.lesson span{transform:none;font-size:11.5px}
 .pin.active{outline:3px solid var(--ink);outline-offset:1px}
 
 /* compact popup card */
@@ -103,6 +117,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 .pop .summary.full{-webkit-line-clamp:unset;display:block}
 .cats{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 6px}
 .cat{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:0 6px;color:var(--muted)}
+.cat.les{border-color:var(--lesson);color:var(--lesson)}
 .cat.hit{border-color:var(--ink);color:var(--ink);font-weight:700}
 .pop .info{font-size:10.5px;color:var(--muted);margin:0 0 6px}
 .pop .info a{color:inherit}
@@ -129,15 +144,21 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 <div class="app">
   <header>
     <div class="title-row">
-      <h1>療育マップ<small id="area"></small></h1>
+      <h1>療育・習い事マップ<small id="area"></small></h1>
       <span class="count" id="count"></span>
     </div>
-    <div class="chips" id="chips" role="group" aria-label="種類で絞り込み"></div>
+    <div class="seg" id="kindSeg" role="group" aria-label="表示する施設">
+      <button data-k="ryo" aria-pressed="false"><span class="dot" style="background:var(--jihatsu)"></span>療育</button>
+      <button data-k="les" aria-pressed="false"><span class="dot" style="background:var(--lesson)"></span>習い事</button>
+      <button data-k="both" aria-pressed="true">両方</button>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="療育の種類で絞り込み"></div>
     <div class="selects">
-      <label>エリア<select id="wardSel" aria-label="エリアで絞り込み"></select></label>
-      <label>得意分野<select id="catSel" aria-label="得意分野で絞り込み"></select></label>
+      <div class="fbox ryo" id="catBox">療育の得意分野<select id="catSel" aria-label="療育の得意分野で絞り込み"></select></div>
+      <div class="fbox les" id="genreBox">習い事のジャンル<select id="genreSel" aria-label="習い事のジャンルで絞り込み"></select></div>
     </div>
     <div class="selects school">
+      <label>エリア<select id="wardSel" aria-label="エリアで絞り込み"></select></label>
       <label>学校から探す<select id="schoolSel" aria-label="学校から探す"></select></label>
     </div>
     <p class="school-note" id="schoolNote" hidden></p>
@@ -158,7 +179,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="facilities.js?v=20260926-5"></script>
+<script src="facilities.js?v=20260926-6"></script>
 <script>
 (function(){
   const SERVICES = {
@@ -166,8 +187,11 @@ main.split .list-btn{bottom:calc(42% + 10px)}
     houday:{label:"放課後等デイ", short:"放", color:"var(--houday)"},
     houmon:{label:"居宅訪問型", short:"訪", color:"var(--houmon)"},
     hoikuhoumon:{label:"保育所等訪問", short:"保", color:"var(--hoiku)"},
-    clinic:{label:"医療機関", short:"医", color:"var(--clinic)"}
+    clinic:{label:"医療機関", short:"医", color:"var(--clinic)"},
+    lesson:{label:"習い事", short:"習", color:"var(--lesson)"}
   };
+  // 習い事のジャンル（facilities.js の genre）
+  const GENRES = { study:{label:"学習・英語", short:"学"}, art:{label:"音楽・アート", short:"音"}, sport:{label:"運動", short:"運"} };
   // 得意分野（facilities.js の cats に入れるキー）
   const CATS = {
     lang:"ことば・言語", motor:"運動", sensory:"感覚統合", study:"学習", sst:"SST・社会性",
@@ -197,9 +221,10 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   });
 
   const isClinic = f => f.services.includes("clinic");
+  const isLesson = f => f.services.includes("lesson");
   const main4 = f => { const m=f.services.filter(s=>s!=="hoikuhoumon"); return m.length?m:f.services; };
   const colorOf = f => { const k=main4(f); return k.length>1 ? "var(--both)" : SERVICES[k[0]].color; };
-  const labelOf = f => main4(f).slice(0,2).map(s=>SERVICES[s].short).join("");
+  const labelOf = f => isLesson(f) ? (GENRES[f.genre]||{short:"習"}).short : main4(f).slice(0,2).map(s=>SERVICES[s].short).join("");
 
   const map = L.map("map",{zoomControl:false}).setView([35.69,139.775],14);
   L.control.zoom({position:"topright"}).addTo(map);
@@ -210,28 +235,43 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   const markers = {};
   let active = null;
   data.forEach(f=>{
-    const icon = L.divIcon({className:"",iconSize:[28,28],iconAnchor:isClinic(f)?[13,13]:[14,28],
-      html:`<div class="pin${isClinic(f)?" clinic":""}" style="background:${colorOf(f)}"><span>${labelOf(f)}</span></div>`});
+    const icon = L.divIcon({className:"",iconSize:[28,28],iconAnchor:isClinic(f)||isLesson(f)?[13,13]:[14,28],
+      html:`<div class="pin${isClinic(f)?" clinic":isLesson(f)?" lesson":""}" style="background:${colorOf(f)}"><span>${labelOf(f)}</span></div>`});
     const m = L.marker([f.lat,f.lng],{icon,title:f.name,keyboard:true});
     m.on("click",()=>openPop(f));
     markers[f.id]=m;
   });
 
   // --- filters ---
-  let mode="all", ward="all", cat="all", sortBy="ward";
+  let kind="both", mode="all", ward="all", cat="all", genre="all", sortBy="ward";
   const chips=document.getElementById("chips");
-  chips.innerHTML = `<button class="chip" data-k="all" aria-pressed="true">すべて</button>` +
-    Object.entries(SERVICES).map(([k,s])=>`<button class="chip" data-k="${k}" aria-pressed="false"><span class="dot${k==="clinic"?" sq":""}" style="background:${s.color}"></span>${s.label}</button>`).join("");
+  chips.innerHTML = `<span class="chips-label">療育の種類</span><button class="chip" data-k="all" aria-pressed="true">すべて</button>` +
+    Object.entries(SERVICES).filter(([k])=>k!=="lesson").map(([k,s])=>`<button class="chip" data-k="${k}" aria-pressed="false"><span class="dot${k==="clinic"?" sq":""}" style="background:${s.color}"></span>${s.label}</button>`).join("");
   chips.addEventListener("click",e=>{
     const b=e.target.closest("button.chip"); if(!b) return;
     mode=b.dataset.k;
     chips.querySelectorAll("button.chip").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));
     applyFilter();
   });
-  const wardSel=document.getElementById("wardSel"), catSel=document.getElementById("catSel");
+  const wardSel=document.getElementById("wardSel"), catSel=document.getElementById("catSel"), genreSel=document.getElementById("genreSel");
+  const kindSeg=document.getElementById("kindSeg"), catBox=document.getElementById("catBox"), genreBox=document.getElementById("genreBox");
+  // 表示する施設：療育／習い事／両方。関係のない絞り込みは隠す
+  function setKind(k){
+    kind=k;
+    kindSeg.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.k===k)));
+    chips.hidden = k==="les"; catBox.hidden = k==="les"; genreBox.hidden = k==="ryo";
+    if(k==="les"){ mode="all"; cat="all"; catSel.value="all"; catSel.classList.remove("on"); chips.querySelectorAll("button.chip").forEach(c=>c.setAttribute("aria-pressed",String(c.dataset.k==="all"))); }
+    if(k==="ryo"){ genre="all"; genreSel.value="all"; genreSel.classList.remove("on"); }
+    applyFilter();
+    if(!school) fitVisible();
+  }
+  kindSeg.addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) setKind(b.dataset.k); });
   wardSel.innerHTML = `<option value="all">すべて</option>`+AREAS.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join("");
   catSel.innerHTML = `<option value="all">すべて</option>`+Object.entries(CATS).map(([k,v])=>{
     const n=data.filter(f=>f.cats.includes(k)).length; return `<option value="${k}">${esc(v)}（${n}）</option>`;}).join("");
+  genreSel.innerHTML = `<option value="all">すべて</option>`+Object.entries(GENRES).map(([k,v])=>{
+    const n=data.filter(f=>isLesson(f)&&f.genre===k).length; return `<option value="${k}">${esc(v.label)}（${n}）</option>`;}).join("");
+  genreSel.onchange=()=>{genre=genreSel.value; genreSel.classList.toggle("on",genre!=="all"); applyFilter();};
   wardSel.onchange=()=>{ward=wardSel.value; wardSel.classList.toggle("on",ward!=="all"); applyFilter(); fitVisible();};
   catSel.onchange=()=>{cat=catSel.value; catSel.classList.toggle("on",cat!=="all"); applyFilter();};
 
@@ -296,13 +336,19 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   const preschoolOnly = f => f.services.length===1 && f.services[0]==="jihatsu";
   // 学校選択時：未就学児向け（児童発達支援のみ）は除外。訪問型は学校・自宅に来てくれるので距離に関係なく表示
   const nearOk = f => !school || (!preschoolOnly(f) && (visitOnly(f) || f.dist<=WALK_M || f.cats.includes("pickup")));
-  const visible = f => (mode==="all" || f.services.includes(mode)) && (ward==="all" || f.ward===ward) && (cat==="all" || f.cats.includes(cat)) && nearOk(f);
+  // 療育の絞り込み（種類・得意分野）は療育の施設に、ジャンルは習い事にだけ効く
+  const ryoOk = f => (mode==="all" || f.services.includes(mode)) && (cat==="all" || f.cats.includes(cat));
+  const lesOk = f => genre==="all" || f.genre===genre;
+  const kindOk = f => isLesson(f) ? (kind!=="ryo" && lesOk(f)) : (kind!=="les" && ryoOk(f));
+  const visible = f => kindOk(f) && (ward==="all" || f.ward===ward) && nearOk(f);
   const distLabel = f => !school ? "" : visitOnly(f) ? "学校・自宅へ訪問" : (f.dist<=WALK_M ? `${esc(school.name)}から徒歩約${walkMin(f.dist)}分` : `送迎あり（${esc(school.name)}から約${(f.dist/1000).toFixed(1)}km）`);
   function applyFilter(){
     let n=0;
     data.forEach(f=>{ if(visible(f)){n++; markers[f.id].addTo(map);} else markers[f.id].remove(); });
     document.getElementById("count").textContent = `${n}件`;
     if(school) schoolNote.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分以内（点線の円）か送迎あり、または訪問型：<b>${n}件</b>（未就学児向けのみの施設は除外）`;
+    const ln=data.filter(f=>visible(f)&&isLesson(f)).length;
+    document.getElementById("count").textContent = kind==="both" ? `療育${n-ln}／習い事${ln}` : `${n}件`;
     renderList(); renderNear();
     if(active && !visible(active)) closePop();
   }
@@ -313,15 +359,17 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   }
   function renderNear(){
     if(!school){ nearList.innerHTML=""; return; }
-    const vis=data.filter(visible);
+    let vis=data.filter(visible); const all=vis.length;
+    const les=vis.filter(isLesson).sort((a,b)=>a.dist-b.dist);
+    vis=vis.filter(f=>!isLesson(f));
     const walk=vis.filter(f=>!visitOnly(f)&&f.dist<=WALK_M).sort((a,b)=>a.dist-b.dist);
     const pick=vis.filter(f=>!visitOnly(f)&&f.dist>WALK_M).sort((a,b)=>a.dist-b.dist);
     const visit=vis.filter(visitOnly);
-    nearTitle.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分・送迎あり・訪問型：<b>${vis.length}件</b>${districtNote(school)}`;
+    nearTitle.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分・送迎あり・訪問型：<b>${all}件</b>${districtNote(school)}`;
     const row=f=>`<button class="nrow${active&&active.id===f.id?" on":""}" data-id="${f.id}"><span class="sw${isClinic(f)?" sq":""}" style="background:${colorOf(f)}"></span><span class="nm">${esc(f.name)}</span><span class="dd">${visitOnly(f)?"訪問型":f.dist<=WALK_M?"徒歩約"+walkMin(f.dist)+"分":"送迎あり・"+(f.dist/1000).toFixed(1)+"km"}</span></button>`;
     const sec=(t,a)=>a.length?`<p class="near-sec">${t}（${a.length}）</p>`+a.map(row).join(""):"";
-    nearList.innerHTML = vis.length ? sec("徒歩15分以内",walk)+sec("送迎あり（徒歩15分より遠い）",pick)+sec("学校・自宅へ訪問",visit)
-      : `<p class="near-sec">条件に合う施設がありません。種類・得意分野の絞り込みを「すべて」に戻してみてください。</p>`;
+    nearList.innerHTML = all ? sec("療育：徒歩15分以内",walk)+sec("療育：送迎あり（徒歩15分より遠い）",pick)+sec("療育：学校・自宅へ訪問",visit)+sec("習い事：徒歩15分以内",les)
+      : `<p class="near-sec">条件に合う施設がありません。種類・得意分野・ジャンルの絞り込みを「すべて」に戻すか、表示を「両方」にしてみてください。</p>`;
   }
   nearList.addEventListener("click",e=>{
     const b=e.target.closest(".nrow"); if(!b) return;
@@ -337,8 +385,13 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 
   // --- compact popup ---
   const pop=document.getElementById("pop"), body=document.getElementById("popBody"), mainEl=document.getElementById("main");
-  const badges = f => f.services.map(s=>`<span class="badge" style="background:${SERVICES[s].color}">${SERVICES[s].label}</span>`).join("");
-  const catTags = f => f.cats.map(c=>`<span class="cat${c===cat?" hit":""}">${esc(CATS[c]||c)}</span>`).join("");
+  const badges = f => isLesson(f)
+    ? `<span class="badge" style="background:var(--lesson)">習い事・${esc((GENRES[f.genre]||{label:""}).label)}</span>`
+    : f.services.map(s=>`<span class="badge" style="background:${SERVICES[s].color}">${SERVICES[s].label}</span>`).join("");
+  const catTags = f => isLesson(f)
+    ? (f.tags||[]).map(t=>`<span class="cat les">${esc(t)}</span>`).join("")
+    : f.cats.map(c=>`<span class="cat${c===cat?" hit":""}">${esc(CATS[c]||c)}</span>`).join("");
+  const hasTags = f => isLesson(f) ? (f.tags||[]).length>0 : f.cats.length>0;
   function detailHTML(f, inline){
     const q=encodeURIComponent(f.name+" "+f.address.replace(/（.*?）/g,""));
     const tel=(f.tel||"").replace(/[^0-9]/g,"");
@@ -350,7 +403,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
       <p class="meta">${esc(f.ward||"")}${f.age?"・対象："+esc(f.age):""}</p>
       ${f.note?`<p class="note">⚠ ${esc(f.note)}</p>`:""}
       <p class="summary${inline?" full":""}" title="タップで全文">${esc(f.summary)}</p>
-      ${f.cats.length?`<div class="cats">${catTags(f)}</div>`:""}
+      ${hasTags(f)?`<div class="cats">${catTags(f)}</div>`:""}
       <p class="info">📍 ${esc(f.address)}${f.tel?`<br>📞 <a href="tel:${tel}">${esc(f.tel)}</a>`:""}</p>
       <div class="actions">
         <a class="btn btn-primary" href="${esc(safeUrl(f.url))}" target="_blank" rel="noopener">公式サイト ↗</a>
@@ -409,7 +462,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   }
   function renderList(){
     const items=sorted(data.filter(visible));
-    list.innerHTML = `<div class="list-head"><span>${items.length}件${cat!=="all"?"・得意分野「"+esc(CATS[cat])+"」":""}</span>
+    list.innerHTML = `<div class="list-head"><span>${items.length}件${cat!=="all"?"・得意分野「"+esc(CATS[cat])+"」":""}${genre!=="all"?"・ジャンル「"+esc(GENRES[genre].label)+"」":""}</span>
       <select id="sortSel" aria-label="並べ替え">
         <option value="ward">区ごと</option><option value="type">種類ごと</option>
         ${school?`<option value="dist">学校から近い順</option>`:""}<option value="name">名前順</option><option value="cats">得意分野が多い順</option>
@@ -421,9 +474,9 @@ main.split .list-btn{bottom:calc(42% + 10px)}
         ${school?`<span class="dist">${distLabel(f)}</span>`:""}
         <p>${esc(f.ward||"")}${f.age?"・"+esc(f.age):""}</p>
         <p>${esc(f.summary)}</p>
-        ${f.cats.length?`<div class="cats">${catTags(f)}</div>`:""}
+        ${hasTags(f)?`<div class="cats">${catTags(f)}</div>`:""}
       </button>`).join("") +
-      `<p class="source">掲載情報は各区の公式一覧（${(meta.sources||[]).map(s=>`<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.name)}</a>`).join("、")}）と各施設・医療機関の公式サイトをもとに作成しています（最終確認 ${esc(meta.updated)}）。得意分野は公式サイトの記載からの分類です。「送迎あり」は公式サイトまたは療育施設検索サイト「イクデン」の送迎あり一覧に掲載の施設で、送迎の範囲・対象校は施設ごとに異なります。徒歩時間は直線距離×1.2を分速80mで割った目安です。学校は各区の区立小・中学校と3区内の私立小・中学校（座標はOpenStreetMap）です。学区は各区公式の通学区域表をもとに町丁目単位で表示しており、番地で分かれる町丁目は点線（一部）で示しています。正確な学区は各区の教育委員会にご確認ください。閉室・移転・空き状況・予約状況は変わることがあります。利用・受診前に必ず直接ご確認ください。</p>`;
+      `<p class="source">掲載情報は各区の公式一覧（${(meta.sources||[]).map(s=>s.url?`<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.name)}</a>`:esc(s.name)).join("、")}）と各施設・医療機関の公式サイトをもとに作成しています（最終確認 ${esc(meta.updated)}）。得意分野は公式サイトの記載からの分類です。「送迎あり」は公式サイトまたは療育施設検索サイト「イクデン」の送迎あり一覧に掲載の施設で、送迎の範囲・対象校は施設ごとに異なります。徒歩時間は直線距離×1.2を分速80mで割った目安です。学校は各区の区立小・中学校と3区内の私立小・中学校（座標はOpenStreetMap）です。習い事は、発達障害・グレーゾーンの子の受け入れや個別対応・少人数制など、発達特性への配慮を公式サイトに明記している教室だけを掲載しています（福祉サービスではない自費の教室・区の事業）。学区は各区公式の通学区域表をもとに町丁目単位で表示しており、番地で分かれる町丁目は点線（一部）で示しています。正確な学区は各区の教育委員会にご確認ください。閉室・移転・空き状況・予約状況は変わることがあります。利用・受診前に必ず直接ご確認ください。</p>`;
     const ss=document.getElementById("sortSel"); ss.value=sortBy;
     ss.onchange=()=>{sortBy=ss.value; renderList();};
   }

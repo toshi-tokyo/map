@@ -1,7 +1,7 @@
 // 施設データ（千代田区・台東区・中央区）
 // 出典: 各区の公式一覧（下の FACILITIES_META.sources）に掲載の事業所。
 //       千代田区の一覧は更新が古いため、各施設の公式サイトで運営状況を個別に確認（閉室済みの First Classroom 千代田は除外）。
-// 座標: 国土地理院 住所検索API
+// 座標: 国土地理院 住所検索API（習い事は jageocoder で住所から変換）
 // 概要: 各施設の公式サイト記載内容を要約（2026年9月確認）
 //
 // services に使えるキー:
@@ -10,6 +10,7 @@
 // note: 注意事項（募集停止・区民限定など）がある場合に入れると、カードで強調表示されます。
 // 医療機関は services: ["clinic"]。子どもの発達障害の診療を公式サイトで確認できたものを掲載。
 // cats: 得意分野（lang/motor/sensory/study/sst/aba/medcare/career/pickup）
+// 習い事は services: ["lesson"] と genre（study=学習・英語 / art=音楽・アート / sport=運動）。発達特性への配慮を公式サイトに明記している教室のみ。
 // 閉室・閉院した施設は配列から削除してください。
 
 window.FACILITIES_META = {
@@ -35,6 +36,10 @@ window.FACILITIES_META = {
     {
       "name": "東京都 発達障害者医療機関リスト",
       "url": "https://www.fukushi.metro.tokyo.lg.jp/documents/d/fukushi/200420-9-iryoukikan-list"
+    },
+    {
+      "name": "習い事: 各教室の公式サイト（発達特性への配慮の記載を確認、2026年9月26日）",
+      "url": ""
     }
   ]
 };
@@ -112,7 +117,16 @@ window.FACILITIES = [
   {"ward": "中央区", "name": "日本橋サンクリニック（児童精神科外来）", "services": ["clinic"], "address": "中央区日本橋2-1-21 第二東洋ビル3階", "tel": "03-5542-1718", "lat": 35.682699, "lng": 139.772346, "age": "思春期外来は10〜18歳頃", "tags": ["児童精神科", "思春期外来", "カウンセリング"], "summary": "心療内科・精神科の児童精神科外来。ADHD・ASDなどの医学的評価を行い、必要に応じて薬物療法やカウンセリングを行う。", "url": "https://sun-cl.com/child_psychiatry", "cats": []},
   {"ward": "中央区", "name": "聖路加国際病院 小児科", "services": ["clinic"], "address": "中央区明石町9-1", "tel": "03-3541-5151", "lat": 35.667451, "lng": 139.777068, "age": "子ども", "tags": ["総合病院", "神経外来", "子ども心療内科"], "summary": "総合病院の小児科。神経外来や子ども心療内科外来などの専門外来がある。", "url": "https://hospital.luke.ac.jp/guide/36_pediatrics/index.html", "note": "専門外来は予約制。紹介状がない場合は選定療養費（8,800円）がかかる", "cats": []},
   {"ward": "台東区", "name": "浅草橋こども発達リハビリクリニック", "services": ["clinic"], "address": "台東区浅草橋1-12-4 SCS ASAKUSABASHI 3階", "tel": "03-3864-2600", "lat": 35.697253, "lng": 139.783538, "age": "乳幼児〜", "tags": ["小児科", "作業療法", "運動療法", "日曜診療"], "summary": "ADHD・ASD疑いや、歩く・言葉がゆっくりな子の運動と感覚を評価し、医師が作業療法などの運動療法を行う小児科。日曜も診療。", "url": "http://asakusabashi-kodomo.com/", "note": "電話予約制", "cats": ["lang", "motor"]},
-  {"ward": "台東区", "name": "ストレスケア東京上野駅前クリニック", "services": ["clinic"], "address": "台東区上野7-7-7 早稲田ビルヂング6階", "tel": "03-3842-7730", "lat": 35.714029, "lng": 139.778427, "age": "12〜22歳", "tags": ["思春期", "WISC検査", "認知行動療法", "デイケア"], "summary": "中高生・大学生向け。発達検査（WISC-V）、認知行動療法ベースのカウンセリング、少人数デイケア、薬物療法。不登校やコミュニケーションの悩みにも。", "url": "https://tokyoueno.com/", "note": "完全予約制。デイケアの初診は2026年1月から中止（公式サイト記載）", "cats": ["sst"]}
+  {"ward": "台東区", "name": "ストレスケア東京上野駅前クリニック", "services": ["clinic"], "address": "台東区上野7-7-7 早稲田ビルヂング6階", "tel": "03-3842-7730", "lat": 35.714029, "lng": 139.778427, "age": "12〜22歳", "tags": ["思春期", "WISC検査", "認知行動療法", "デイケア"], "summary": "中高生・大学生向け。発達検査（WISC-V）、認知行動療法ベースのカウンセリング、少人数デイケア、薬物療法。不登校やコミュニケーションの悩みにも。", "url": "https://tokyoueno.com/", "note": "完全予約制。デイケアの初診は2026年1月から中止（公式サイト記載）", "cats": ["sst"]},
+  {"ward": "中央区", "name": "LITALICOジュニア パーソナル 東銀座教室", "services": ["lesson"], "genre": "study", "address": "中央区新富2-4-4 ソーエイビル1階", "tel": "", "lat": 35.671641, "lng": 139.773443, "age": "0〜18歳", "tags": ["学習", "マンツーマン", "ABA", "ペアトレ"], "summary": "50分のマンツーマン授業。ADHD・ASD・LD・グレーゾーンに対応し、応用行動分析に基づく個別計画で学習や生活の困りごとを支援。保護者向けペアトレ・定期面談も。", "url": "https://junior.litalico.jp/school/tokyo/gk_higashiginza/", "cats": [], "note": "福祉サービスではない自費の教室"},
+  {"ward": "中央区", "name": "LITALICOジュニア パーソナル 月島教室", "services": ["lesson"], "genre": "study", "address": "中央区月島1-1-8 CITTAビル5階", "tel": "", "lat": 35.665986, "lng": 139.782626, "age": "0〜18歳", "tags": ["学習", "マンツーマン", "ABA", "ペアトレ"], "summary": "50分のマンツーマン授業。ADHD・ASD・LD・グレーゾーンの相談・支援に対応。応用行動分析に基づく個別計画と保護者サポート。月島駅徒歩2分。", "url": "https://junior.litalico.jp/school/tokyo/pe-5023/", "cats": [], "note": "福祉サービスではない自費の教室。月・火休校"},
+  {"ward": "千代田区", "name": "さくらんぼ教室 市ヶ谷教室", "services": ["lesson"], "genre": "study", "address": "千代田区九段南4-7-24 トゥーラント88ビル3階", "tel": "", "lat": 35.690989, "lng": 139.739412, "age": "幼児〜社会人", "tags": ["学習", "SST", "個別・少人数", "中学受験"], "summary": "発達に障害のある子や勉強・友だちづきあいが苦手な子のための学習塾。個別カリキュラムでの学習とSST（ソーシャルスキルトレーニング）を組み合わせる。", "url": "https://www.sakuranbo-class.com/", "cats": []},
+  {"ward": "千代田区", "name": "個別指導のコーチング1 飯田橋教室", "services": ["lesson"], "genre": "study", "address": "千代田区飯田橋3-7-12 KPビル2階", "tel": "0800-111-1159", "lat": 35.702139, "lng": 139.746464, "age": "年長〜高校3年", "tags": ["学習", "個別指導", "SST"], "summary": "LD・ADHD・自閉スペクトラム症・グレーゾーン専門の個別指導塾。学習習慣づくりと自立を目標にしたコーチング型の指導、SSTの個別指導も。", "url": "https://www.juku-coaching01.com/", "cats": []},
+  {"ward": "千代田区", "name": "キズキ共育塾 秋葉原校", "services": ["lesson"], "genre": "study", "address": "千代田区神田岩本町1-2 清水ビル3階", "tel": "", "lat": 35.696061, "lng": 139.774965, "age": "小学生〜社会人", "tags": ["学習", "完全1対1", "不登校"], "summary": "不登校・発達障害（ADHD・ASD・LD等）の受け入れを明記した完全1対1の個別指導塾。学び直しや受験対策に対応。", "url": "https://kizuki.or.jp/facility/akihabara/", "cats": []},
+  {"ward": "千代田区", "name": "LITALICOワンダー 秋葉原", "services": ["lesson"], "genre": "study", "address": "千代田区神田須田町2-3-16 NRT神田須田町ビル6階", "tel": "03-5289-8124", "lat": 35.696033, "lng": 139.771831, "age": "年長〜高校生", "tags": ["プログラミング", "ロボット", "少人数（講師1:子ども4まで）"], "summary": "ゲーム・アプリ制作、ロボット、3Dプリンタなどのものづくり教室。講師1名につき子ども4名までの少人数制で、一人ひとりに合わせて進める。", "url": "https://wonder.litalico.jp/location/tokyo/akihabara/", "cats": [], "note": "水・金・土・日に開講"},
+  {"ward": "台東区", "name": "ぴあのくらぶ 入谷スタジオ", "services": ["lesson"], "genre": "art", "address": "台東区入谷2-27-11 三和ハウス1階", "tel": "", "lat": 35.721495, "lng": 139.788547, "age": "0歳〜", "tags": ["ピアノ", "音楽療法士", "個人レッスン"], "summary": "入谷のピアノ教室。障害のある方には音楽療法士による個人レッスンもある（公式サイト記載）。0〜3歳向けのコースも。", "url": "https://www.pianoclub-iriya.com/", "cats": [], "note": "音楽療法の個人レッスンの内容・曜日は要問い合わせ"},
+  {"ward": "台東区", "name": "台東区障害者水泳教室（清島温水プール）", "services": ["lesson"], "genre": "sport", "address": "台東区東上野6-16-8 清島温水プール", "tel": "03-3842-5353", "lat": 35.713688, "lng": 139.783105, "age": "小学生以上", "tags": ["水泳", "区の事業", "ジュニアレッスン", "パーソナルレッスン"], "summary": "心身に障害のある小学生以上が対象。体験会（奇数月・無料）、ジュニアレッスン（毎月第1・3金曜）、パーソナルレッスン（毎月第2金曜）など。1回500円。", "url": "https://www.city.taito.lg.jp/gakushu/sports/shogaishasports/syogaishasuiei.html", "cats": [], "note": "排泄の意思表示ができ一人で着替えられること（できない場合は介助者同伴）"},
+  {"ward": "千代田区", "name": "東京YWCA かめさんクラブ（水泳）", "services": ["lesson"], "genre": "sport", "address": "千代田区神田駿河台1-8-11 東京YWCA会館 地下1階", "tel": "", "lat": 35.69802, "lng": 139.76324, "age": "5歳〜小学6年（女の子）", "tags": ["水泳", "少人数", "親子"], "summary": "発達に遅れや偏りのある女の子とお母さんのための水泳クラス。水に慣れることから始め、水泳の基本を楽しく練習。水が苦手な子も参加できる。", "url": "https://www.tokyo.ywca.or.jp/child/social_skill/", "cats": [], "note": "女の子のみ。日程・費用は要問い合わせ"}
 ];
 
 // 小学校・中学校（区立＝各区公式サイト、私立＝東京都私学財団の一覧。座標はOpenStreetMap）  level: e=小学校 / j=中学校・中等教育学校、kind: public/private
