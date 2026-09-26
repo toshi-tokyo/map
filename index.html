@@ -45,6 +45,11 @@ h1 small{font-size:12px;color:var(--muted);margin-left:6px;font-weight:500}
 .school-note b{color:var(--ink)}
 .spin{width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid #555;color:#333;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3);font-family:"Zen Maru Gothic",sans-serif}
 .spin.j{border-color:#7a6a55}
+.spin.p{border-color:#8a5cc2;color:#6b3fa0;border-style:double;border-width:3px}
+.dlegend{display:block;font-size:10.5px;color:var(--muted);font-weight:400;margin-top:2px}
+.dlegend i{display:inline-block;width:12px;height:9px;vertical-align:-1px;margin:0 3px 0 6px;border:1.5px solid #2f6fb0}
+.dlegend i.full{background:rgba(47,111,176,.25)}
+.dlegend i.part{border-style:dashed;background:rgba(47,111,176,.07)}
 .spin.sel{width:26px;height:26px;font-size:13px;background:#2b2a28;color:#fff;border-color:#fff}
 .dist{display:inline-block;font-size:10.5px;font-weight:700;background:var(--ink);color:var(--bg);border-radius:5px;padding:1px 6px;margin:0 0 4px}
 main{position:relative;flex:1;min-height:0}
@@ -153,7 +158,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="facilities.js?v=20260926-4"></script>
+<script src="facilities.js?v=20260926-5"></script>
 <script>
 (function(){
   const SERVICES = {
@@ -236,13 +241,36 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   const walkMin = m => Math.max(1, Math.round(m*1.2/80));
   const distM = (a,b) => { const R=6371000, r=Math.PI/180, dLat=(b.lat-a.lat)*r, dLng=(b.lng-a.lng)*r;
     const h=Math.sin(dLat/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
-  let school=null, schoolCircle=null;
+  let school=null, schoolCircle=null, districtLayers=[];
+  const DIST=(window.SCHOOL_DISTRICTS||{}).dist||{}, DNOTE=(window.SCHOOL_DISTRICTS||{}).note||{}, CHOME=window.CHOME_POLYS||{};
+  // Google polyline（精度1e-4）をデコード
+  function decPoly(str){ let i=0,lat=0,lng=0; const pts=[];
+    while(i<str.length){ for(let k=0;k<2;k++){ let sh=0,res=0,b; do{ b=str.charCodeAt(i++)-63; res|=(b&31)<<sh; sh+=5; }while(b>=32);
+      const d=(res&1)?~(res>>1):(res>>1); if(k===0) lat+=d; else lng+=d; } pts.push([lat/1e4,lng/1e4]); }
+    return pts; }
+  const districtOf = s => DIST[s.ward+"|"+s.name];
+  function drawDistrict(s){
+    districtLayers.forEach(l=>l.remove()); districtLayers=[];
+    const d=s&&districtOf(s); if(!d) return;
+    d.forEach(([nm,part])=>{ (CHOME[nm]||[]).forEach(enc=>{
+      const lay=L.polygon(decPoly(enc), part
+        ? {color:"#2f6fb0",weight:1,dashArray:"3 3",fillColor:"#2f6fb0",fillOpacity:.07,interactive:false}
+        : {color:"#2f6fb0",weight:1,fillColor:"#2f6fb0",fillOpacity:.22,interactive:false}).addTo(map);
+      if(lay.bringToBack) lay.bringToBack();
+      districtLayers.push(lay); }); });
+  }
+  function districtNote(s){
+    if(s.kind==="private") return `<span class="dlegend">私立のため学区はありません</span>`;
+    if(districtOf(s)) return `<span class="dlegend">学区：<i class="full"></i>全域<i class="part"></i>一部（番地で分かれる）</span>`;
+    const n=DNOTE[s.ward+"|"+s.name]; return n?`<span class="dlegend">${esc(n)}</span>`:"";
+  }
   const schoolSel=document.getElementById("schoolSel"), schoolNote=document.getElementById("schoolNote");
+  const LV={e:"小学校",j:"中学校"};
   schoolSel.innerHTML = `<option value="">選択しない</option>` + AREAS.map(a=>
-    ["e","j"].map(lv=>{const arr=SCHOOLS.map((s,i)=>({...s,i})).filter(s=>s.ward===a&&s.level===lv);
-      return arr.length?`<optgroup label="${esc(a)}の${lv==="e"?"小学校":"中学校"}">`+arr.map(s=>`<option value="${s.i}">${esc(s.name)}</option>`).join("")+`</optgroup>`:"";}).join("")).join("");
+    [["e","public"],["j","public"],["e","private"],["j","private"]].map(([lv,kd])=>{const arr=SCHOOLS.map((s,i)=>({...s,i})).filter(s=>s.ward===a&&s.level===lv&&(s.kind||"public")===kd);
+      return arr.length?`<optgroup label="${esc(a)}の${kd==="private"?"私立":"区立"}${LV[lv]}">`+arr.map(s=>`<option value="${s.i}">${esc(s.name)}</option>`).join("")+`</optgroup>`:"";}).join("")).join("");
   const schoolMarkers = SCHOOLS.map((s,i)=>{
-    const m=L.marker([s.lat,s.lng],{icon:L.divIcon({className:"",iconSize:[18,18],iconAnchor:[9,9],html:`<div class="spin ${s.level}">${s.level==="e"?"小":"中"}</div>`}),title:s.name,zIndexOffset:-500});
+    const m=L.marker([s.lat,s.lng],{icon:L.divIcon({className:"",iconSize:[18,18],iconAnchor:[9,9],html:`<div class="spin ${s.level}${s.kind==="private"?" p":""}">${s.level==="e"?"小":"中"}</div>`}),title:(s.kind==="private"?"私立 ":"")+s.name,zIndexOffset:-500});
     m.on("click",()=>{schoolSel.value=String(i); schoolSel.onchange();});
     return m.addTo(map);
   });
@@ -251,10 +279,12 @@ main.split .list-btn{bottom:calc(42% + 10px)}
     closePop();
     schoolMarkers.forEach((m,i)=>{ const el=m.getElement&&m.getElement(); if(el&&el.firstElementChild) el.firstElementChild.classList.toggle("sel", String(i)===v); });
     if(schoolCircle){ schoolCircle.remove(); schoolCircle=null; }
+    drawDistrict(null);
     if(v===""){ school=null; schoolSel.classList.remove("on"); schoolNote.hidden=true; data.forEach(f=>f.dist=null); if(sortBy==="dist") sortBy="ward"; setSplit(false); applyFilter(); fitVisible(); return; }
     school=SCHOOLS[+v]; schoolSel.classList.add("on");
     data.forEach(f=>f.dist=distM(school,f));
-    schoolCircle=L.circle([school.lat,school.lng],{radius:WALK_M,color:"#2b2a28",weight:1.5,dashArray:"5 5",fillOpacity:.05}).addTo(map);
+    drawDistrict(school);   // 区立校は学区（通学区域）を塗る
+    schoolCircle=L.circle([school.lat,school.lng],{radius:WALK_M,color:"#2b2a28",weight:1.5,dashArray:"5 5",fillOpacity:0,interactive:false}).addTo(map);
     sortBy="dist";
     setSplit(true);
     applyFilter();
@@ -287,7 +317,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
     const walk=vis.filter(f=>!visitOnly(f)&&f.dist<=WALK_M).sort((a,b)=>a.dist-b.dist);
     const pick=vis.filter(f=>!visitOnly(f)&&f.dist>WALK_M).sort((a,b)=>a.dist-b.dist);
     const visit=vis.filter(visitOnly);
-    nearTitle.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分・送迎あり・訪問型：<b>${vis.length}件</b>`;
+    nearTitle.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分・送迎あり・訪問型：<b>${vis.length}件</b>${districtNote(school)}`;
     const row=f=>`<button class="nrow${active&&active.id===f.id?" on":""}" data-id="${f.id}"><span class="sw${isClinic(f)?" sq":""}" style="background:${colorOf(f)}"></span><span class="nm">${esc(f.name)}</span><span class="dd">${visitOnly(f)?"訪問型":f.dist<=WALK_M?"徒歩約"+walkMin(f.dist)+"分":"送迎あり・"+(f.dist/1000).toFixed(1)+"km"}</span></button>`;
     const sec=(t,a)=>a.length?`<p class="near-sec">${t}（${a.length}）</p>`+a.map(row).join(""):"";
     nearList.innerHTML = vis.length ? sec("徒歩15分以内",walk)+sec("送迎あり（徒歩15分より遠い）",pick)+sec("学校・自宅へ訪問",visit)
@@ -393,7 +423,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
         <p>${esc(f.summary)}</p>
         ${f.cats.length?`<div class="cats">${catTags(f)}</div>`:""}
       </button>`).join("") +
-      `<p class="source">掲載情報は各区の公式一覧（${(meta.sources||[]).map(s=>`<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.name)}</a>`).join("、")}）と各施設・医療機関の公式サイトをもとに作成しています（最終確認 ${esc(meta.updated)}）。得意分野は公式サイトの記載からの分類です。「送迎あり」は公式サイトまたは療育施設検索サイト「イクデン」の送迎あり一覧に掲載の施設で、送迎の範囲・対象校は施設ごとに異なります。徒歩時間は直線距離×1.2を分速80mで割った目安です。学校は各区の区立小・中学校（座標はOpenStreetMap）です。閉室・移転・空き状況・予約状況は変わることがあります。利用・受診前に必ず直接ご確認ください。</p>`;
+      `<p class="source">掲載情報は各区の公式一覧（${(meta.sources||[]).map(s=>`<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.name)}</a>`).join("、")}）と各施設・医療機関の公式サイトをもとに作成しています（最終確認 ${esc(meta.updated)}）。得意分野は公式サイトの記載からの分類です。「送迎あり」は公式サイトまたは療育施設検索サイト「イクデン」の送迎あり一覧に掲載の施設で、送迎の範囲・対象校は施設ごとに異なります。徒歩時間は直線距離×1.2を分速80mで割った目安です。学校は各区の区立小・中学校と3区内の私立小・中学校（座標はOpenStreetMap）です。学区は各区公式の通学区域表をもとに町丁目単位で表示しており、番地で分かれる町丁目は点線（一部）で示しています。正確な学区は各区の教育委員会にご確認ください。閉室・移転・空き状況・予約状況は変わることがあります。利用・受診前に必ず直接ご確認ください。</p>`;
     const ss=document.getElementById("sortSel"); ss.value=sortBy;
     ss.onchange=()=>{sortBy=ss.value; renderList();};
   }
