@@ -100,6 +100,8 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 .pin.clinic{border-radius:7px;transform:none;width:26px;height:26px}
 .pin.clinic span{transform:none;font-size:12px}
 .pin.lesson{border-radius:50%;transform:none;width:26px;height:26px;border:3px double #fff}
+.pin.lesson.inquire{border-style:dashed;border-width:2px;opacity:.82}
+.pin.lesson.futoko-place{border-radius:6px;transform:none}
 .pin.lesson span{transform:none;font-size:11.5px}
 .pin.active{outline:3px solid var(--ink);outline-offset:1px}
 
@@ -110,6 +112,10 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 .pop-close{position:absolute;top:2px;right:2px;border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:6px 7px}
 .badges{display:flex;flex-wrap:wrap;gap:4px;margin:0 22px 4px 0}
 .badge{font-size:9.5px;font-weight:700;color:#fff;border-radius:4px;padding:1px 5px}
+.badge.inquire{background:repeating-linear-gradient(135deg,var(--lesson),var(--lesson) 4px,color-mix(in srgb,var(--lesson) 55%,#fff) 4px,color-mix(in srgb,var(--lesson) 55%,#fff) 8px)!important}
+.badge.futoko{background:#6b4fa0!important}
+.futoko-toggle{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--ink);user-select:none}
+.futoko-toggle input{width:16px;height:16px;accent-color:#6b4fa0}
 .pop .name{font-family:"Zen Maru Gothic",sans-serif;font-size:13px;font-weight:700;margin:0 20px 2px 0;line-height:1.35}
 .pop .meta{color:var(--muted);margin:0 0 3px;font-size:10.5px}
 .pop .note{font-size:10.5px;line-height:1.45;background:color-mix(in srgb,var(--jihatsu) 14%,var(--surface));border-left:3px solid var(--jihatsu);border-radius:6px;padding:4px 7px;margin:4px 0}
@@ -161,6 +167,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
       <label>エリア<select id="wardSel" aria-label="エリアで絞り込み"></select></label>
       <label>学校から探す<select id="schoolSel" aria-label="学校から探す"></select></label>
     </div>
+    <label class="futoko-toggle"><input type="checkbox" id="futokoChk">不登校対応のみ表示</label>
     <p class="school-note" id="schoolNote" hidden></p>
   </header>
   <main id="main">
@@ -179,7 +186,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="facilities.js?v=20260926-6"></script>
+<script src="facilities.js?v=20260928-1"></script>
 <script>
 (function(){
   const SERVICES = {
@@ -191,7 +198,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
     lesson:{label:"習い事", short:"習", color:"var(--lesson)"}
   };
   // 習い事のジャンル（facilities.js の genre）
-  const GENRES = { study:{label:"学習・英語", short:"学"}, art:{label:"音楽・アート", short:"音"}, sport:{label:"運動", short:"運"} };
+  const GENRES = { study:{label:"学習・英語", short:"学"}, art:{label:"音楽・アート", short:"音"}, sport:{label:"運動", short:"運"}, futoko_place:{label:"居場所・フリースクール", short:"居"} };
   // 得意分野（facilities.js の cats に入れるキー）
   const CATS = {
     lang:"ことば・言語", motor:"運動", sensory:"感覚統合", study:"学習", sst:"SST・社会性",
@@ -203,7 +210,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   const AREAS = meta.areas||[];
   const data = (window.FACILITIES||[]).map((f,i)=>({...f,id:i,cats:f.cats||[]}));
 
-  if(!data.length || data.some(f=>!f.ward) || !AREAS.length){
+  if(!data.length || data.some(f=>!f.ward && !f.online && !f.visit) || !AREAS.length){
     const w=document.createElement("div"); w.className="stale";
     w.textContent = !data.length
       ? "施設データ（facilities.js）を読み込めませんでした。index.html と同じ場所に facilities.js があるか確認してください。"
@@ -212,9 +219,10 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   }
   document.getElementById("area").textContent = AREAS.map(a=>a.replace(/区$/,"")).join("・");
 
-  // 同じ座標の施設を少しずらす
+  // 同じ座標の施設を少しずらす（オンライン教室は座標を持たないため対象外）
   const seen = {};
   data.forEach(f=>{
+    if(f.lat==null||f.lng==null) return;
     const k=f.lat.toFixed(5)+","+f.lng.toFixed(5);
     const n=seen[k]=(seen[k]||0)+1;
     if(n>1){f.lat+=(n-1)*0.00018; f.lng+=(n-1)*0.00022;}
@@ -222,6 +230,10 @@ main.split .list-btn{bottom:calc(42% + 10px)}
 
   const isClinic = f => f.services.includes("clinic");
   const isLesson = f => f.services.includes("lesson");
+  const isInquire = f => isLesson(f) && f.tier==="inquire";
+  const isOnline = f => !!f.online;
+  const isVisit = f => !!f.visit;
+  const isFutoko = f => !!f.futoko;
   const main4 = f => { const m=f.services.filter(s=>s!=="hoikuhoumon"); return m.length?m:f.services; };
   const colorOf = f => { const k=main4(f); return k.length>1 ? "var(--both)" : SERVICES[k[0]].color; };
   const labelOf = f => isLesson(f) ? (GENRES[f.genre]||{short:"習"}).short : main4(f).slice(0,2).map(s=>SERVICES[s].short).join("");
@@ -235,15 +247,16 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   const markers = {};
   let active = null;
   data.forEach(f=>{
+    if(f.lat==null||f.lng==null) return;   // オンライン教室は地図に置かない
     const icon = L.divIcon({className:"",iconSize:[28,28],iconAnchor:isClinic(f)||isLesson(f)?[13,13]:[14,28],
-      html:`<div class="pin${isClinic(f)?" clinic":isLesson(f)?" lesson":""}" style="background:${colorOf(f)}"><span>${labelOf(f)}</span></div>`});
+      html:`<div class="pin${isClinic(f)?" clinic":isLesson(f)?" lesson"+(isInquire(f)?" inquire":"")+(f.genre==="futoko_place"?" futoko-place":""):""}" style="background:${colorOf(f)}"><span>${labelOf(f)}</span></div>`});
     const m = L.marker([f.lat,f.lng],{icon,title:f.name,keyboard:true});
     m.on("click",()=>openPop(f));
     markers[f.id]=m;
   });
 
   // --- filters ---
-  let kind="both", mode="all", ward="all", cat="all", genre="all", sortBy="ward";
+  let kind="both", mode="all", ward="all", cat="all", genre="all", sortBy="ward", futokoOnly=false;
   const chips=document.getElementById("chips");
   chips.innerHTML = `<span class="chips-label">療育の種類</span><button class="chip" data-k="all" aria-pressed="true">すべて</button>` +
     Object.entries(SERVICES).filter(([k])=>k!=="lesson").map(([k,s])=>`<button class="chip" data-k="${k}" aria-pressed="false"><span class="dot${k==="clinic"?" sq":""}" style="background:${s.color}"></span>${s.label}</button>`).join("");
@@ -272,6 +285,8 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   genreSel.innerHTML = `<option value="all">すべて</option>`+Object.entries(GENRES).map(([k,v])=>{
     const n=data.filter(f=>isLesson(f)&&f.genre===k).length; return `<option value="${k}">${esc(v.label)}（${n}）</option>`;}).join("");
   genreSel.onchange=()=>{genre=genreSel.value; genreSel.classList.toggle("on",genre!=="all"); applyFilter();};
+  const futokoChk=document.getElementById("futokoChk");
+  futokoChk.onchange=()=>{futokoOnly=futokoChk.checked; applyFilter();};
   wardSel.onchange=()=>{ward=wardSel.value; wardSel.classList.toggle("on",ward!=="all"); applyFilter(); fitVisible();};
   catSel.onchange=()=>{cat=catSel.value; catSel.classList.toggle("on",cat!=="all"); applyFilter();};
 
@@ -322,7 +337,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
     drawDistrict(null);
     if(v===""){ school=null; schoolSel.classList.remove("on"); schoolNote.hidden=true; data.forEach(f=>f.dist=null); if(sortBy==="dist") sortBy="ward"; setSplit(false); applyFilter(); fitVisible(); return; }
     school=SCHOOLS[+v]; schoolSel.classList.add("on");
-    data.forEach(f=>f.dist=distM(school,f));
+    data.forEach(f=>{ f.dist = (f.lat==null||f.lng==null) ? null : distM(school,f); });
     drawDistrict(school);   // 区立校は学区（通学区域）を塗る
     schoolCircle=L.circle([school.lat,school.lng],{radius:WALK_M,color:"#2b2a28",weight:1.5,dashArray:"5 5",fillOpacity:0,interactive:false}).addTo(map);
     sortBy="dist";
@@ -335,16 +350,16 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   const visitOnly = f => f.services.every(x=>x==="houmon"||x==="hoikuhoumon");
   const preschoolOnly = f => f.services.length===1 && f.services[0]==="jihatsu";
   // 学校選択時：未就学児向け（児童発達支援のみ）は除外。訪問型は学校・自宅に来てくれるので距離に関係なく表示
-  const nearOk = f => !school || (!preschoolOnly(f) && (visitOnly(f) || f.dist<=WALK_M || f.cats.includes("pickup")));
+  const nearOk = f => !school || isOnline(f) || isVisit(f) || (!preschoolOnly(f) && (visitOnly(f) || f.dist<=WALK_M || f.cats.includes("pickup")));
   // 療育の絞り込み（種類・得意分野）は療育の施設に、ジャンルは習い事にだけ効く
   const ryoOk = f => (mode==="all" || f.services.includes(mode)) && (cat==="all" || f.cats.includes(cat));
   const lesOk = f => genre==="all" || f.genre===genre;
   const kindOk = f => isLesson(f) ? (kind!=="ryo" && lesOk(f)) : (kind!=="les" && ryoOk(f));
-  const visible = f => kindOk(f) && (ward==="all" || f.ward===ward) && nearOk(f);
-  const distLabel = f => !school ? "" : visitOnly(f) ? "学校・自宅へ訪問" : (f.dist<=WALK_M ? `${esc(school.name)}から徒歩約${walkMin(f.dist)}分` : `送迎あり（${esc(school.name)}から約${(f.dist/1000).toFixed(1)}km）`);
+  const visible = f => kindOk(f) && (ward==="all" || f.ward===ward || isOnline(f) || isVisit(f)) && nearOk(f) && (!futokoOnly || isFutoko(f));
+  const distLabel = f => !school ? "" : isOnline(f) ? "オンライン受講（場所を問わず利用可）" : isVisit(f) ? "ご自宅へ訪問（場所を問わず利用可）" : visitOnly(f) ? "学校・自宅へ訪問" : (f.dist<=WALK_M ? `${esc(school.name)}から徒歩約${walkMin(f.dist)}分` : `送迎あり（${esc(school.name)}から約${(f.dist/1000).toFixed(1)}km）`);
   function applyFilter(){
     let n=0;
-    data.forEach(f=>{ if(visible(f)){n++; markers[f.id].addTo(map);} else markers[f.id].remove(); });
+    data.forEach(f=>{ if(visible(f)){n++; markers[f.id]&&markers[f.id].addTo(map);} else markers[f.id]&&markers[f.id].remove(); });
     document.getElementById("count").textContent = `${n}件`;
     if(school) schoolNote.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分以内（点線の円）か送迎あり、または訪問型：<b>${n}件</b>（未就学児向けのみの施設は除外）`;
     const ln=data.filter(f=>visible(f)&&isLesson(f)).length;
@@ -360,15 +375,17 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   function renderNear(){
     if(!school){ nearList.innerHTML=""; return; }
     let vis=data.filter(visible); const all=vis.length;
-    const les=vis.filter(isLesson).sort((a,b)=>a.dist-b.dist);
+    const lesOnline=vis.filter(isOnline);
+    const lesVisit=vis.filter(f=>isLesson(f)&&isVisit(f));
+    const les=vis.filter(f=>isLesson(f)&&!isOnline(f)&&!isVisit(f)).sort((a,b)=>a.dist-b.dist);
     vis=vis.filter(f=>!isLesson(f));
     const walk=vis.filter(f=>!visitOnly(f)&&f.dist<=WALK_M).sort((a,b)=>a.dist-b.dist);
     const pick=vis.filter(f=>!visitOnly(f)&&f.dist>WALK_M).sort((a,b)=>a.dist-b.dist);
     const visit=vis.filter(visitOnly);
     nearTitle.innerHTML=`<b>${esc(school.name)}</b>から徒歩15分・送迎あり・訪問型：<b>${all}件</b>${districtNote(school)}`;
-    const row=f=>`<button class="nrow${active&&active.id===f.id?" on":""}" data-id="${f.id}"><span class="sw${isClinic(f)?" sq":""}" style="background:${colorOf(f)}"></span><span class="nm">${esc(f.name)}</span><span class="dd">${visitOnly(f)?"訪問型":f.dist<=WALK_M?"徒歩約"+walkMin(f.dist)+"分":"送迎あり・"+(f.dist/1000).toFixed(1)+"km"}</span></button>`;
+    const row=f=>`<button class="nrow${active&&active.id===f.id?" on":""}" data-id="${f.id}"><span class="sw${isClinic(f)?" sq":""}" style="background:${colorOf(f)}"></span><span class="nm">${esc(f.name)}</span><span class="dd">${isOnline(f)?"オンライン":isVisit(f)?"訪問型":visitOnly(f)?"訪問型":f.dist<=WALK_M?"徒歩約"+walkMin(f.dist)+"分":"送迎あり・"+(f.dist/1000).toFixed(1)+"km"}</span></button>`;
     const sec=(t,a)=>a.length?`<p class="near-sec">${t}（${a.length}）</p>`+a.map(row).join(""):"";
-    nearList.innerHTML = all ? sec("療育：徒歩15分以内",walk)+sec("療育：送迎あり（徒歩15分より遠い）",pick)+sec("療育：学校・自宅へ訪問",visit)+sec("習い事：徒歩15分以内",les)
+    nearList.innerHTML = all ? sec("療育：徒歩15分以内",walk)+sec("療育：送迎あり（徒歩15分より遠い）",pick)+sec("療育：学校・自宅へ訪問",visit)+sec("習い事：徒歩15分以内",les)+sec("習い事：オンライン",lesOnline)+sec("習い事：ご家庭への訪問",lesVisit)
       : `<p class="near-sec">条件に合う施設がありません。種類・得意分野・ジャンルの絞り込みを「すべて」に戻すか、表示を「両方」にしてみてください。</p>`;
   }
   nearList.addEventListener("click",e=>{
@@ -379,15 +396,16 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   });
   document.getElementById("nearClose").onclick=()=>{ schoolSel.value=""; schoolSel.onchange(); };
   function fitVisible(){
-    const pts=data.filter(visible).map(f=>[f.lat,f.lng]);
+    const pts=data.filter(f=>visible(f)&&f.lat!=null).map(f=>[f.lat,f.lng]);
     if(pts.length) map.fitBounds(L.latLngBounds(pts),{padding:[30,30],maxZoom:16});
   }
 
   // --- compact popup ---
   const pop=document.getElementById("pop"), body=document.getElementById("popBody"), mainEl=document.getElementById("main");
-  const badges = f => isLesson(f)
-    ? `<span class="badge" style="background:var(--lesson)">習い事・${esc((GENRES[f.genre]||{label:""}).label)}</span>`
-    : f.services.map(s=>`<span class="badge" style="background:${SERVICES[s].color}">${SERVICES[s].label}</span>`).join("");
+  const badges = f => (isLesson(f)
+    ? `<span class="badge${isInquire(f)?" inquire":""}" style="background:var(--lesson)">${isOnline(f)?"オンライン・":isVisit(f)?"訪問・":""}習い事・${esc((GENRES[f.genre]||{label:""}).label)}${isInquire(f)?"（要問い合わせ）":""}</span>`
+    : f.services.map(s=>`<span class="badge" style="background:${SERVICES[s].color}">${SERVICES[s].label}</span>`).join("")
+   ) + (isFutoko(f) ? `<span class="badge futoko">不登校対応</span>` : "");
   const catTags = f => isLesson(f)
     ? (f.tags||[]).map(t=>`<span class="cat les">${esc(t)}</span>`).join("")
     : f.cats.map(c=>`<span class="cat${c===cat?" hit":""}">${esc(CATS[c]||c)}</span>`).join("");
@@ -395,19 +413,20 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   function detailHTML(f, inline){
     const q=encodeURIComponent(f.name+" "+f.address.replace(/（.*?）/g,""));
     const tel=(f.tel||"").replace(/[^0-9]/g,"");
+    const online=isOnline(f), visitMode=isVisit(f);
     return `
       ${inline?"":`<div class="badges">${badges(f)}</div>
       <h2 class="name">${esc(f.name)}</h2>
       ${school?`<span class="dist">${distLabel(f)}</span>`:""}`}
       ${inline?`<div class="badges">${badges(f)}</div>`:""}
-      <p class="meta">${esc(f.ward||"")}${f.age?"・対象："+esc(f.age):""}</p>
+      <p class="meta">${esc(f.ward||(online?"オンライン":visitMode?"訪問型":""))}${f.age?"・対象："+esc(f.age):""}</p>
       ${f.note?`<p class="note">⚠ ${esc(f.note)}</p>`:""}
       <p class="summary${inline?" full":""}" title="タップで全文">${esc(f.summary)}</p>
       ${hasTags(f)?`<div class="cats">${catTags(f)}</div>`:""}
-      <p class="info">📍 ${esc(f.address)}${f.tel?`<br>📞 <a href="tel:${tel}">${esc(f.tel)}</a>`:""}</p>
+      <p class="info">${online?"🌐 オンラインのみ（住所なし）":visitMode?"🏠 "+esc(f.address):"📍 "+esc(f.address)}${f.tel?`<br>📞 <a href="tel:${tel}">${esc(f.tel)}</a>`:""}</p>
       <div class="actions">
         <a class="btn btn-primary" href="${esc(safeUrl(f.url))}" target="_blank" rel="noopener">公式サイト ↗</a>
-        <a class="btn btn-sub" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">経路</a>
+        ${(online||visitMode)?"":`<a class="btn btn-sub" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">経路</a>`}
       </div>`;
   }
   // 学校選択中（地図＋下のリスト表示）は、ポップアップの代わりにリスト内で詳細を開く
@@ -420,27 +439,29 @@ main.split .list-btn{bottom:calc(42% + 10px)}
       row.scrollIntoView({block:"nearest",behavior:"smooth"});
       d.querySelector(".summary").onclick=e=>e.currentTarget.classList.toggle("full");
     }
-    map.panTo([f.lat,f.lng],{animate:true});   // 縮尺は変えずに中心だけ移動
+    if(f.lat!=null) map.panTo([f.lat,f.lng],{animate:true});   // 縮尺は変えずに中心だけ移動（オンライン教室は地図を動かさない）
   }
   function openPop(f){
-    if(active) markers[active.id].getElement()?.firstElementChild?.classList.remove("active");
+    if(active) markers[active.id]?.getElement()?.firstElementChild?.classList.remove("active");
     active=f;
-    markers[f.id].getElement()?.firstElementChild?.classList.add("active");
+    markers[f.id]?.getElement()?.firstElementChild?.classList.add("active");
     nearList.querySelectorAll(".nrow").forEach(r=>r.classList.toggle("on", +r.dataset.id===f.id));
     if(mainEl.classList.contains("split")){ openInline(f); return; }
     body.innerHTML = detailHTML(f);
     body.querySelector(".summary").onclick=e=>e.currentTarget.classList.toggle("full");
     pop.classList.add("open"); mainEl.classList.add("pop-open");
     pop.scrollTop=0;
-    // ピンがカードに隠れないよう、カードの右上あたりに来るようずらす
-    const pt=map.latLngToContainerPoint([f.lat,f.lng]);
-    const r=pop.getBoundingClientRect(), sz=map.getSize();
-    const tx=Math.min(sz.x-40, r.width+ (sz.x-r.width)/2), ty=Math.max(60,(sz.y-r.height)/2);
-    map.panBy([pt.x-tx, pt.y-ty],{animate:true});
+    // ピンがカードに隠れないよう、カードの右上あたりに来るようずらす（オンライン教室はピンがないため中央に表示）
+    if(f.lat!=null){
+      const pt=map.latLngToContainerPoint([f.lat,f.lng]);
+      const r=pop.getBoundingClientRect(), sz=map.getSize();
+      const tx=Math.min(sz.x-40, r.width+ (sz.x-r.width)/2), ty=Math.max(60,(sz.y-r.height)/2);
+      map.panBy([pt.x-tx, pt.y-ty],{animate:true});
+    }
   }
   function closePop(){
     pop.classList.remove("open"); mainEl.classList.remove("pop-open");
-    if(active) markers[active.id].getElement()?.firstElementChild?.classList.remove("active");
+    if(active) markers[active.id]?.getElement()?.firstElementChild?.classList.remove("active");
     nearList.querySelectorAll(".nrow.on").forEach(r=>r.classList.remove("on"));
     nearList.querySelectorAll(".ndetail").forEach(d=>d.remove());
     active=null;
@@ -484,7 +505,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
     const b=e.target.closest(".item"); if(!b) return;
     toggleList(false);
     const f=data[+b.dataset.id];
-    map.setView([f.lat,f.lng],map.getZoom(),{animate:false});   // 縮尺は変えない
+    if(f.lat!=null) map.setView([f.lat,f.lng],map.getZoom(),{animate:false});   // 縮尺は変えない（オンライン教室は地図を動かさない）
     openPop(f);
   });
   function toggleList(show){
@@ -495,7 +516,7 @@ main.split .list-btn{bottom:calc(42% + 10px)}
   listBtn.onclick=()=>toggleList(!list.classList.contains("open"));
 
   applyFilter();
-  if(data.length) map.fitBounds(L.latLngBounds(data.map(f=>[f.lat,f.lng])),{padding:[30,30]});
+  if(data.some(f=>f.lat!=null)) map.fitBounds(L.latLngBounds(data.filter(f=>f.lat!=null).map(f=>[f.lat,f.lng])),{padding:[30,30]});
 })();
 </script>
 </body>
